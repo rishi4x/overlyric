@@ -44,7 +44,7 @@ final class PlayerModel: ObservableObject {
         timingAdjustmentCount += 1
     }
     @Published var artwork: NSImage?
-    @Published var accent = Color(red: 0.78, green: 0.75, blue: 1)
+    @Published var accent = Color(white: 0.72)
     private let timing = TimingPreferences()
     private let recordings = RecordingPreferences()
     private let artworkLoader = ArtworkLoader()
@@ -139,7 +139,7 @@ final class PlayerModel: ObservableObject {
         artworkTask?.cancel()
         artworkURL = url
         artwork = nil
-        accent = Color(red: 0.78, green: 0.75, blue: 1)
+        accent = Color(white: 0.72)
         guard let url else { return }
         artworkTask = Task {
             do {

@@ -17,6 +17,26 @@ final class AppearanceTests: XCTestCase {
         XCTAssertNil(RGBColor.dominant(in: [0, 0, 0, 0]))
     }
 
+    func testDarkPurpleShadowsDoNotOverrideWarmCoverColors() throws {
+        // Representative color families from the reported warm portrait cover.
+        let families: [([UInt8], Int)] = [([8, 6, 8, 255], 915), ([21, 19, 19, 255], 430),
+                                        ([87, 53, 42, 255], 263), ([55, 40, 36, 255], 188)]
+        var pixels: [UInt8] = []
+        for (pixel, count) in families {
+            for _ in 0..<count { pixels.append(contentsOf: pixel) }
+        }
+        let color = try XCTUnwrap(RGBColor.dominant(in: pixels))
+        XCTAssertEqual(color.red, 87.0 / 255, accuracy: 0.001)
+        XCTAssertGreaterThan(color.red, color.green)
+        XCTAssertGreaterThan(color.green, color.blue)
+    }
+
+    func testNearBlackArtworkRemainsNeutralWhenNoVisibleColorsExist() throws {
+        let color = try XCTUnwrap(RGBColor.dominant(in: [8, 6, 8, 255, 9, 6, 9, 255]))
+        XCTAssertEqual(color.red, color.green)
+        XCTAssertEqual(color.green, color.blue)
+    }
+
     func testTimingPreferencesRestorePerTrackAndResetIndependently() throws {
         let suite = "OverlyricTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

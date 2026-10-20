@@ -5,7 +5,7 @@ public struct RGBColor: Equatable, Sendable {
     public let green: Double
     public let blue: Double
 
-    /// Most common color family, averaged within that family rather than across the cover.
+    /// Most common visible color family; dark shadows and neutrals cannot drown out cover colors.
     public static func dominant(in pixels: [UInt8]) -> RGBColor? {
         var buckets: [Int: (count: Int, red: Int, green: Int, blue: Int)] = [:]
         for index in stride(from: 0, to: pixels.count - pixels.count % 4, by: 4) {
@@ -15,8 +15,20 @@ public struct RGBColor: Equatable, Sendable {
             let bucket = buckets[key] ?? (0, 0, 0, 0)
             buckets[key] = (bucket.count + 1, bucket.red + red, bucket.green + green, bucket.blue + blue)
         }
-        guard let bucket = buckets.sorted(by: { $0.key < $1.key }).max(by: { $0.value.count < $1.value.count })?.value else { return nil }
+        let colored = buckets.filter { _, bucket in
+            let channels = [Double(bucket.red), Double(bucket.green), Double(bucket.blue)].map { $0 / Double(bucket.count) }
+            let brightest = channels.max() ?? 0
+            let darkest = channels.min() ?? 0
+            return brightest >= 48 && brightest - darkest >= brightest * 0.15
+        }
+        let candidates = colored.isEmpty ? buckets : colored
+        guard let bucket = candidates.sorted(by: { $0.key < $1.key }).max(by: { $0.value.count < $1.value.count })?.value else { return nil }
         let divisor = Double(bucket.count) * 255
+        if colored.isEmpty, Double(max(bucket.red, bucket.green, bucket.blue)) / Double(bucket.count) < 48 {
+            // Brightening tiny differences in near-black pixels invents a visible hue.
+            let gray = Double(bucket.red + bucket.green + bucket.blue) / (divisor * 3)
+            return RGBColor(red: gray, green: gray, blue: gray)
+        }
         return RGBColor(red: Double(bucket.red) / divisor, green: Double(bucket.green) / divisor, blue: Double(bucket.blue) / divisor)
     }
 }
