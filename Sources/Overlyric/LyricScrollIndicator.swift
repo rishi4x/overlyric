@@ -1,14 +1,27 @@
 import SwiftUI
 import LyricsCore
 
+@MainActor
+final class LyricScrollState: ObservableObject {
+    @Published var metrics = LyricScrollMetrics()
+}
+
 /// A floating handle with no track or reserved gutter. Its parent is above lyric masks and chrome.
 struct LyricScrollIndicator: View {
-    let metrics: LyricScrollMetrics
+    @ObservedObject var state: LyricScrollState
     let onScroll: (Double) -> Void
     let onInteraction: (Bool) -> Void
     @State private var dragStart: Double?
 
-    var body: some View {
+    private var metrics: LyricScrollMetrics { state.metrics }
+
+    @ViewBuilder var body: some View {
+        if metrics.maximumOffset > 0 {
+            indicator
+        }
+    }
+
+    private var indicator: some View {
         GeometryReader { geometry in
             let height = max(0, geometry.size.height)
             let thumbHeight = metrics.thumbHeight(in: height)

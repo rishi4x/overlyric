@@ -6,16 +6,16 @@ public struct LyricEmphasis {
 
     public static func at(_ index: Int, activeIndex: Int?) -> LyricEmphasis {
         guard let activeIndex else {
-            if index < 2 { return .init(opacity: 0.6, blur: 0) }
-            return .init(opacity: max(0.16, 0.48 - Double(index - 2) * 0.1), blur: min(3.8, Double(index - 1) * 0.9))
+            if index < 2 { return .init(opacity: 0.52, blur: index == 0 ? 0 : 0.45) }
+            return .init(opacity: max(0.14, 0.42 - Double(index - 2) * 0.09), blur: min(4.6, Double(index - 1) * 1.1))
         }
         let distance = index - activeIndex
-        if distance == 0 { return .init(opacity: 1, blur: 0) }
-        if distance == 1 { return .init(opacity: 0.46, blur: 0) }
+        if distance == 0 { return .init(opacity: 0.9, blur: 0) }
+        if distance == 1 { return .init(opacity: 0.4, blur: 0.45) }
         if distance < 0 {
-            return .init(opacity: max(0.13, 0.47 - Double(-distance) * 0.12), blur: min(4, Double(-distance) * 1.25))
+            return .init(opacity: max(0.11, 0.41 - Double(-distance) * 0.105), blur: min(4.8, Double(-distance) * 1.5))
         }
-        return .init(opacity: max(0.16, 0.58 - Double(distance - 1) * 0.12), blur: min(3.8, Double(distance - 1) * 0.95))
+        return .init(opacity: max(0.14, 0.5 - Double(distance - 1) * 0.1), blur: min(4.6, Double(distance - 1) * 1.15))
     }
 }
 

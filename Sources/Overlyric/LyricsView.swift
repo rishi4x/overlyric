@@ -11,12 +11,13 @@ struct LyricsView: View {
     @State private var panelSize = CGSize(width: 390, height: 510)
     @State private var timingToastVisible = false
     @State private var timingToastHideTask: Task<Void, Never>?
-    @State private var scrollMetrics = LyricScrollMetrics()
+    @State private var scrollState = LyricScrollState()
     @State private var lyricScrollPosition = ScrollPosition()
     @State private var scrollbarVisible = false
     @State private var scrollbarDragging = false
     @State private var scrollbarHideTask: Task<Void, Never>?
     @State private var showingLyricsSearch = false
+    @State private var showingRecordingPicker = false
     @State private var surfaceHovered = false
     @State private var showingAvailabilityInfo = false
     @AppStorage("alwaysShowHeader") private var alwaysShowHeader = true
@@ -29,9 +30,10 @@ struct LyricsView: View {
     private var controlsVisible: Bool { app.overlayHovered || scrubbing || popover || player.track == nil }
     private var availabilityActionsVisible: Bool { surfaceHovered || (!popover && app.overlayHovered) || showingAvailabilityInfo }
 
-    private var headerVisible: Bool { popover || alwaysShowHeader || app.overlayHovered || scrubbing }
+    private var headerVisible: Bool { showingRecordingPicker || popover || alwaysShowHeader || app.overlayHovered || scrubbing }
+    private var headerActionsVisible: Bool { surfaceHovered || (!popover && app.overlayHovered) || scrubbing }
     private var lineAnimation: Animation? {
-        reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.9)
+        reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 1)
     }
 
     var body: some View {
@@ -44,13 +46,14 @@ struct LyricsView: View {
                     .background { panelBackground }
                     .clipShape(RoundedRectangle(cornerRadius: 24))
                     .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(0.15), lineWidth: 1) }
-                    .padding(6)
+                    .ignoresSafeArea()
             }
         }
         .foregroundStyle(Color(white: 0.96))
         .preferredColorScheme(.dark)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { panelSize = $0 }
         .onHover { surfaceHovered = $0 }
+        .onChange(of: player.loading) { _, loading in if loading { showingRecordingPicker = false } }
         .sheet(isPresented: $showingLyricsSearch) { LyricsSearchView(player: player) }
         .onChange(of: player.timingAdjustmentCount) { _, _ in
             timingToastHideTask?.cancel()
@@ -61,6 +64,7 @@ struct LyricsView: View {
             }
         }
         .onChange(of: player.track?.id) { _, _ in
+            showingRecordingPicker = false
             timingToastHideTask?.cancel()
             timingToastVisible = false
             scrollbarHideTask?.cancel()
@@ -75,47 +79,62 @@ struct LyricsView: View {
             scrollbarVisible = false
             scrollbarDragging = false
         }
+        .transaction { transaction in
+            if app.isLiveResizing {
+                transaction.animation = nil
+                transaction.disablesAnimations = true
+            }
+        }
     }
 
     private var content: some View {
         lyricBody
             // Instrumentals center their entire visible group in the panel.
             // Lyrics keep a stable viewport, unaffected by hover controls.
-            .padding(.top, !player.instrumental && (popover || alwaysShowHeader) ? 77 : 0)
+            .padding(.top, showingRecordingPicker ? 112 : (!player.instrumental && (popover || alwaysShowHeader) ? 77 : 0))
             .background { AlbumAmbience(artwork: player.artwork, accent: accent, playing: player.isPlaying, enabled: ambienceEnabled) }
             .overlay(alignment: .top) {
-                if headerVisible {
-                    VStack(spacing: 0) {
-                        header.padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 16)
-                            .background { if !popover { WindowDragHandle() } }
+                VStack(spacing: 0) {
+                    header.padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 16)
+                        .background { if !popover { WindowDragHandle() } }
+                    if player.showAlternateRecordingNotice && availabilityActionsVisible && !showingRecordingPicker {
+                        alternateRecordingNotice.padding(.horizontal, 22).padding(.bottom, 12)
                     }
-                    .background {
-                        LinearGradient(stops: [.init(color: .black.opacity(0.92), location: 0),
-                            .init(color: .black.opacity(0.8), location: 0.45),
-                            .init(color: .black.opacity(0.45), location: 0.72),
-                            .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
-                            .padding(.bottom, -55)
-                            .allowsHitTesting(false)
-                    }
-                    .transition(.opacity)
                 }
+                .frame(maxWidth: .infinity)
+                .background {
+                    LinearGradient(stops: [.init(color: .black.opacity(0.92), location: 0),
+                        .init(color: .black.opacity(0.8), location: 0.45),
+                        .init(color: .black.opacity(0.45), location: 0.72),
+                        .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                        .padding(.bottom, -55)
+                        .allowsHitTesting(false)
+                }
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { view in
+                    view.opacity(headerVisible ? 1 : 0)
+                }
+                .allowsHitTesting(headerVisible)
+                .accessibilityHidden(!headerVisible)
             }
             .overlay(alignment: .bottom) {
-                if controlsVisible {
-                    footer.padding(.horizontal, 22).padding(.bottom, 18).padding(.top, 28)
-                        .background {
-                            LinearGradient(stops: [.init(color: .clear, location: 0),
-                                .init(color: .black.opacity(0.65), location: 0.3),
-                                .init(color: .black.opacity(0.9), location: 0.6),
-                                .init(color: .black.opacity(0.95), location: 1)], startPoint: .top, endPoint: .bottom)
-                                .padding(.top, -35).allowsHitTesting(false)
-                        }
-                        .transition(.opacity)
-                }
+                footer.padding(.horizontal, 22).padding(.bottom, 18).padding(.top, 28)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        LinearGradient(stops: [.init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.65), location: 0.3),
+                            .init(color: .black.opacity(0.9), location: 0.6),
+                            .init(color: .black.opacity(0.95), location: 1)], startPoint: .top, endPoint: .bottom)
+                            .padding(.top, -35).allowsHitTesting(false)
+                    }
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { view in
+                        view.opacity(controlsVisible ? 1 : 0)
+                    }
+                    .allowsHitTesting(controlsVisible)
+                    .accessibilityHidden(!controlsVisible)
             }
             .overlay(alignment: .trailing) {
-                if !player.lines.isEmpty, scrollMetrics.maximumOffset > 0 {
-                    LyricScrollIndicator(metrics: scrollMetrics, onScroll: { offset in
+                if !player.lines.isEmpty {
+                    LyricScrollIndicator(state: scrollState, onScroll: { offset in
                         browsing = true
                         lyricScrollPosition.scrollTo(y: offset)
                     }, onInteraction: { dragging in
@@ -138,8 +157,6 @@ struct LyricsView: View {
                     .opacity(timingToastVisible ? 1 : 0)
                     .accessibilityHidden(!timingToastVisible)
             }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: controlsVisible)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: headerVisible)
     }
 
     private var timingToast: some View {
@@ -214,6 +231,11 @@ struct LyricsView: View {
                     headerIcon("xmark", label: "Close lyrics") { app.closeSurface() }
                 }
             }.font(.system(size: 12, weight: .medium)).padding(.top, 6)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.18)) { view in
+                    view.opacity(headerActionsVisible ? 1 : 0)
+                }
+                .allowsHitTesting(headerActionsVisible)
+                .accessibilityHidden(!headerActionsVisible)
         }
     }
 
@@ -227,29 +249,10 @@ struct LyricsView: View {
                 ProgressView().controlSize(.small)
                 Text("Finding the words…").font(.system(size: 13)).foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if showingRecordingPicker && !player.candidates.isEmpty {
+            recordingPicker
         } else if !player.lines.isEmpty {
             syncedLyrics
-        } else if !player.candidates.isEmpty {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Choose a recording").font(.system(size: 20, weight: .semibold, design: .rounded))
-                    Text("No exact duration match. These versions may have different timing; use ⋯ → Lyric timing to adjust.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(3)
-                    ForEach(player.candidates) { record in
-                        Button { player.chooseRecording(record) } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(record.albumName).font(.system(size: 13, weight: .medium)).lineLimit(2)
-                                    Text(record.instrumental && !record.hasLyrics ? "Instrumental" : record.syncedLyrics?.isEmpty == false ? "Synced lyrics" : "Plain lyrics")
-                                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(time(record.duration)).font(.system(size: 12, design: .monospaced)).foregroundStyle(accent)
-                            }.padding(12).background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-                        }.buttonStyle(.plain)
-                    }
-                }.padding(24)
-            }.scrollIndicators(.never)
         } else if let plain = player.plainLyrics {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -317,11 +320,58 @@ struct LyricsView: View {
         }
     }
 
+    private var alternateRecordingNotice: some View {
+        HStack(spacing: 8) {
+            Button { showingRecordingPicker = true } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Wrong lyrics?").font(.system(size: 12, weight: .semibold))
+                    Text("Click to choose a different one").font(.system(size: 11)).foregroundStyle(.white.opacity(0.65))
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10).padding(.leading, 12)
+                    .contentShape(Rectangle())
+            }.buttonStyle(.plain)
+            Button { player.dismissAlternateRecordingNotice() } label: {
+                Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).padding(12)
+            }.buttonStyle(.plain).help("Dismiss for this song").accessibilityLabel("Dismiss recording suggestion for this song")
+        }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var recordingPicker: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("Choose a recording").font(.system(size: 20, weight: .semibold))
+                    Spacer()
+                    Button { showingRecordingPicker = false } label: {
+                        Image(systemName: "xmark").padding(6)
+                    }.buttonStyle(.plain).help("Back to lyrics").accessibilityLabel("Back to lyrics")
+                }
+                Text("Choose the version that fits. Timing can vary between recordings.")
+                    .font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(3)
+                ForEach(player.candidates) { record in
+                    Button { player.chooseRecording(record); showingRecordingPicker = false } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(record.albumName.isEmpty ? record.trackName : record.albumName).font(.system(size: 13, weight: .medium)).lineLimit(2)
+                                Text(record.instrumental && !record.hasLyrics ? "Instrumental" : record.syncedLyrics?.isEmpty == false ? "Synced lyrics" : "Plain lyrics")
+                                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if player.selectedRecordingID == record.id {
+                                Image(systemName: "checkmark").foregroundStyle(.white.opacity(0.8))
+                            }
+                            Text(time(record.duration)).font(.system(size: 12, design: .monospaced)).foregroundStyle(.white.opacity(0.75))
+                        }.padding(12).background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+                    }.buttonStyle(.plain)
+                }
+            }.padding(24).padding(.bottom, 100)
+        }.scrollIndicators(.never)
+    }
     private var syncedLyrics: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: layout.rowSpacing) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(player.lines) { line in
                             let active = line.id == player.activeIndex
                             let emphasis = LyricEmphasis.at(line.id, activeIndex: player.activeIndex)
@@ -330,13 +380,11 @@ struct LyricsView: View {
                                     .font(.system(size: layout.fontSize(base: fontSize + 3), weight: .semibold, design: .default))
                                     .lineSpacing(4 * layout.scale).multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
-                                    .foregroundStyle(.white.opacity(browsing ? (active ? 1 : 0.8) : emphasis.opacity))
+                                    .foregroundStyle(.white.opacity(emphasis.opacity))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .scaleEffect(active ? 1 : 0.86, anchor: .leading)
-                                    .blur(radius: browsing ? 0 : emphasis.blur)
+                                    .blur(radius: browsing ? 0 : layout.blurRadius(base: emphasis.blur, fontSize: fontSize + 3))
                                     .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: browsing)
-                                    .animation(lineAnimation, value: player.activeIndex)
-                                    .animation(lineAnimation, value: active)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -344,6 +392,8 @@ struct LyricsView: View {
                             .help("Play from this line")
                             .accessibilityLabel(line.text.isEmpty ? "Instrumental break" : line.text)
                             .accessibilityAddTraits(active ? .isSelected : [])
+                            .padding(.bottom, line.id == player.lines.last?.id ? 0 : layout.rowSpacing(after: line.id, activeIndex: player.activeIndex))
+                            .animation(lineAnimation, value: player.activeIndex)
                             .id(line.id)
                         }
                     }
@@ -356,7 +406,7 @@ struct LyricsView: View {
                     LyricScrollMetrics(offset: geometry.contentOffset.y + geometry.contentInsets.top,
                         contentHeight: geometry.contentSize.height + geometry.contentInsets.top + geometry.contentInsets.bottom,
                         viewportHeight: geometry.containerSize.height)
-                } action: { _, metrics in scrollMetrics = metrics }
+                } action: { _, metrics in scrollState.metrics = metrics }
                 .onScrollPhaseChange { _, phase in
                     if phase == .tracking || phase == .interacting || phase == .decelerating {
                         revealScrollbar()
@@ -410,33 +460,7 @@ struct LyricsView: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 10) {
-            if let error = player.controlError {
-                Text(error).font(.system(size: 11)).foregroundStyle(.orange).lineLimit(3)
-            }
-            HStack(spacing: 8) {
-                Text(time(scrubbing ? scrubPosition : player.position))
-                PlaybackScrubber(value: player.position, duration: player.track?.duration ?? 0, accent: accent,
-                    onPreview: { preview in
-                        scrubbing = preview != nil
-                        if let preview { scrubPosition = preview }
-                    }, onSeek: player.seek)
-                Text(time(player.track?.duration ?? 0))
-            }.font(.system(size: 10, design: .monospaced)).foregroundStyle(.white.opacity(0.45))
-            HStack(spacing: 22) {
-                icon("backward.end.fill", label: "Previous track") { player.command("previous track") }
-                icon("gobackward.10", label: "Rewind 10 seconds") { player.seek(player.position - 10) }
-                    .font(.system(size: 18))
-                icon(player.isPlaying ? "pause.fill" : "play.fill", label: player.isPlaying ? "Pause" : "Play") {
-                    player.command("playpause")
-                }.font(.system(size: 20))
-                icon("goforward.10", label: "Forward 10 seconds") { player.seek(player.position + 10) }
-                    .font(.system(size: 18))
-                icon("forward.end.fill", label: "Next track") { player.command("next track") }
-            }
-            .foregroundStyle(.white.opacity(0.85))
-            .frame(maxWidth: .infinity)
-        }.disabled(player.track == nil || player.connectionError != nil)
+        PlaybackFooter(player: player, clock: player.clock, scrubbing: $scrubbing, scrubPosition: $scrubPosition)
     }
 
     private func headerIcon(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {

@@ -34,4 +34,30 @@ final class LyricLayoutTests: XCTestCase {
         XCTAssertGreaterThan(next.scale, first.scale)
         XCTAssertLessThan(next.scale - first.scale, 0.01)
     }
+
+    func testBlurKeepsTheSameStrengthRelativeToFontSize() {
+        let normal = LyricLayout(width: 390, height: 510)
+        let large = LyricLayout(width: 780, height: 1000)
+        XCTAssertEqual(normal.blurRadius(base: 4, fontSize: 30), 4)
+        XCTAssertGreaterThan(large.blurRadius(base: 4, fontSize: 30), 4)
+        for layout in [normal, large] {
+            for font in [21.0, 30.0, 45.0] {
+                XCTAssertEqual(layout.blurRadius(base: 4, fontSize: font) / layout.fontSize(base: font), 4.0 / 30, accuracy: 0.0001)
+                XCTAssertEqual(layout.blurRadius(base: 0, fontSize: font), 0)
+            }
+        }
+    }
+
+    func testOnlyGapsFarFromCurrentLineBecomeCompact() {
+        let layout = LyricLayout(width: 390, height: 510)
+        for index in [3, 4, 5, 6] {
+            XCTAssertEqual(layout.rowSpacing(after: index, activeIndex: 5), layout.rowSpacing)
+        }
+        for index in [0, 1, 2, 7, 8, 9] {
+            XCTAssertLessThan(layout.rowSpacing(after: index, activeIndex: 5), layout.rowSpacing)
+        }
+        XCTAssertEqual(layout.rowSpacing(after: 3, activeIndex: nil), layout.rowSpacing)
+        let large = LyricLayout(width: 780, height: 1000)
+        XCTAssertEqual(large.rowSpacing(after: 2, activeIndex: 5) / large.rowSpacing, 0.6, accuracy: 0.0001)
+    }
 }

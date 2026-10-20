@@ -14,5 +14,11 @@ public struct LyricLayout {
 
     public var horizontalPadding: Double { 28 * sqrt(scale) }
     public var rowSpacing: Double { 22 * scale }
+    public func rowSpacing(after index: Int, activeIndex: Int?) -> Double {
+        guard let activeIndex else { return rowSpacing }
+        let nearCurrent = abs(index - activeIndex) <= 1 || abs(index + 1 - activeIndex) <= 1
+        return rowSpacing * (nearCurrent ? 1 : 0.6)
+    }
     public func fontSize(base: Double) -> Double { base * scale }
+    public func blurRadius(base: Double, fontSize: Double) -> Double { base * self.fontSize(base: fontSize) / 30 }
 }

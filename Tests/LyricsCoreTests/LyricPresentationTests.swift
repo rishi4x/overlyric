@@ -2,10 +2,12 @@ import XCTest
 @testable import LyricsCore
 
 final class LyricPresentationTests: XCTestCase {
-    func testCurrentAndNextLinesStayClearWhileSurroundingLinesGraduallyBlur() {
+    func testCurrentLineStaysSharpAndNextLineHasOnlyASlightBlur() {
         XCTAssertEqual(LyricEmphasis.at(5, activeIndex: 5).blur, 0)
-        XCTAssertEqual(LyricEmphasis.at(6, activeIndex: 5).blur, 0)
-        XCTAssertEqual(LyricEmphasis.at(5, activeIndex: 5).opacity, 1)
+        XCTAssertGreaterThan(LyricEmphasis.at(6, activeIndex: 5).blur, 0)
+        XCTAssertLessThan(LyricEmphasis.at(6, activeIndex: 5).blur, LyricEmphasis.at(7, activeIndex: 5).blur)
+        XCTAssertLessThan(LyricEmphasis.at(5, activeIndex: 5).opacity, 1)
+        XCTAssertGreaterThan(LyricEmphasis.at(5, activeIndex: 5).opacity, LyricEmphasis.at(6, activeIndex: 5).opacity)
         XCTAssertLessThan(LyricEmphasis.at(4, activeIndex: 5).blur, LyricEmphasis.at(3, activeIndex: 5).blur)
         XCTAssertGreaterThan(LyricEmphasis.at(4, activeIndex: 5).opacity, LyricEmphasis.at(3, activeIndex: 5).opacity)
         XCTAssertLessThan(LyricEmphasis.at(7, activeIndex: 5).blur, LyricEmphasis.at(8, activeIndex: 5).blur)
@@ -16,7 +18,7 @@ final class LyricPresentationTests: XCTestCase {
         let first = LyricEmphasis.at(0, activeIndex: nil)
         XCTAssertEqual(first.blur, 0)
         XCTAssertLessThan(first.opacity, 1)
-        XCTAssertLessThanOrEqual(LyricEmphasis.at(100, activeIndex: 0).blur, 4)
+        XCTAssertLessThanOrEqual(LyricEmphasis.at(100, activeIndex: 0).blur, 4.8)
         XCTAssertGreaterThan(LyricEmphasis.at(0, activeIndex: 100).opacity, 0)
     }
 

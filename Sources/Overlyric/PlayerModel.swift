@@ -4,11 +4,21 @@ import LyricsCore
 @MainActor
 final class PlayerModel: ObservableObject {
     @Published var track: Track?
-    @Published var position = 0.0
+    let clock = PlaybackClock()
+    var position: Double {
+        get { clock.position }
+        set {
+            if clock.position != newValue { clock.position = newValue }
+            updateActiveIndex()
+        }
+    }
     @Published var isPlaying = false
-    @Published var lines: [LyricLine] = []
+    @Published var lines: [LyricLine] = [] { didSet { updateActiveIndex() } }
+    @Published private(set) var activeIndex: Int?
     @Published var plainLyrics: String?
     @Published var candidates: [LyricsRecord] = []
+    @Published private(set) var showAlternateRecordingNotice = false
+    @Published private(set) var selectedRecordingID: Int?
     @Published var message = "Play something on Spotify"
     @Published var detail = "Your words will meet you here."
     @Published var loading = false
@@ -17,7 +27,10 @@ final class PlayerModel: ObservableObject {
     @Published var connectionError: String?
     @Published var controlError: String?
     @Published var offset = 0.0 {
-        didSet { if let track { timing.setOffset(offset, for: track.id) } }
+        didSet {
+            if let track { timing.setOffset(offset, for: track.id) }
+            updateActiveIndex()
+        }
     }
     @Published private(set) var timingAdjustmentCount = 0
 
@@ -33,6 +46,7 @@ final class PlayerModel: ObservableObject {
     @Published var artwork: NSImage?
     @Published var accent = Color(red: 0.78, green: 0.75, blue: 1)
     private let timing = TimingPreferences()
+    private let recordings = RecordingPreferences()
     private let artworkLoader = ArtworkLoader()
     private var artworkTask: Task<Void, Never>?
     private var artworkURL: URL?
@@ -51,7 +65,10 @@ final class PlayerModel: ObservableObject {
     private var pendingSeek: PendingSeek?
     private var seekRevision = 0
 
-    var activeIndex: Int? { LRC.activeIndex(in: lines, at: position + offset) }
+    private func updateActiveIndex() {
+        let index = LRC.activeIndex(in: lines, at: position + offset)
+        if activeIndex != index { activeIndex = index }
+    }
 
     func start() {
         guard pollTask == nil else { return }
@@ -62,13 +79,14 @@ final class PlayerModel: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(650))
             }
         }
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.isPlaying else { return }
                 self.position = min(self.track?.duration ?? 0,
                     self.anchorPosition + Date().timeIntervalSince(self.anchorTime))
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     func reconnect() { connectionError = nil; controlError = nil; Task { await refresh() } }
@@ -85,6 +103,7 @@ final class PlayerModel: ObservableObject {
                 updateArtwork(nil)
                 lyricRequestID = UUID()
                 track = nil; lines = []; plainLyrics = nil; candidates = []; isPlaying = false; loading = false; position = 0
+                showAlternateRecordingNotice = false; selectedRecordingID = nil
                 instrumental = false; lyricLoadFailed = false
                 message = "Play something on Spotify"; detail = "Open the Spotify desktop app to get started."
                 return
@@ -100,7 +119,7 @@ final class PlayerModel: ObservableObject {
                 anchorPosition = playback.position; anchorTime = now
                 position = playback.position
             }
-            isPlaying = playback.playing
+            if isPlaying != playback.playing { isPlaying = playback.playing }
             if playback.track != track {
                 track = playback.track
                 offset = timing.offset(for: playback.track.id)
@@ -144,6 +163,7 @@ final class PlayerModel: ObservableObject {
         let requestID = UUID()
         lyricRequestID = requestID
         lines = []; plainLyrics = nil; candidates = []; loading = true
+        showAlternateRecordingNotice = false; selectedRecordingID = nil
         instrumental = false; lyricLoadFailed = false
         lyricTask = Task {
             defer { if lyricRequestID == requestID { loading = false } }
@@ -156,7 +176,15 @@ final class PlayerModel: ObservableObject {
                 guard !Task.isCancelled, lyricRequestID == requestID, self.track == track else { return }
                 switch result {
                 case .record(let record): applyRecording(record)
-                case .candidates(let matches): candidates = matches
+                case .candidates(let matches):
+                    if let record = recordings.preferredRecording(in: matches, for: track.id) {
+                        candidates = matches
+                        applyRecording(record)
+                        recordings.remember(record.id, for: track.id)
+                        showAlternateRecordingNotice = !recordings.isNoticeDismissed(for: track.id)
+                    } else {
+                        showNoLyrics(instrumental: false)
+                    }
                 case .instrumental: showNoLyrics(instrumental: true)
                 case .missing: showNoLyrics(instrumental: false)
                 }
@@ -174,10 +202,19 @@ final class PlayerModel: ObservableObject {
         lyricRequestID = UUID()
         loading = false
         applyRecording(record)
+        if let track {
+            recordings.remember(record.id, for: track.id)
+            dismissAlternateRecordingNotice()
+        }
+    }
+
+    func dismissAlternateRecordingNotice() {
+        if let track { recordings.dismissNotice(for: track.id) }
+        showAlternateRecordingNotice = false
     }
 
     private func applyRecording(_ record: LyricsRecord) {
-        candidates = []
+        selectedRecordingID = record.id
         lines = LRC.parse(record.syncedLyrics ?? "")
         if !lines.contains(where: { !$0.text.isEmpty }) { lines = [] }
         plainLyrics = lines.isEmpty ? record.plainLyrics : nil

@@ -29,6 +29,7 @@ final class OverlayHostingView: NSHostingView<LyricsView> {
 @MainActor
 final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NSWindowDelegate {
     @Published var overlayHovered = false
+    @Published private(set) var isLiveResizing = false
     @Published var mode = DisplayMode.restored(UserDefaults.standard.string(forKey: "displayMode"),
         legacyShowWithSpotify: UserDefaults.standard.bool(forKey: "showWithSpotify")) {
         didSet {
@@ -79,6 +80,18 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
                 switch event.charactersIgnoringModifiers {
                 case "+", "=": self.resizeLyrics(by: 2)
                 case "-": self.resizeLyrics(by: -2)
+                case "0" where modifiers == .command: self.resetLyricSize()
+                default: return event
+                }
+                return nil
+            }
+            if modifiers.isEmpty {
+                guard self.player.track != nil, self.player.connectionError == nil else { return event }
+                switch event.keyCode {
+                case 49:
+                    if !event.isARepeat { self.player.command("playpause") }
+                case 123: self.player.seek(self.player.position - 10)
+                case 124: self.player.seek(self.player.position + 10)
                 default: return event
                 }
                 return nil
@@ -109,6 +122,8 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
         UserDefaults.standard.set(min(42, max(18, size + delta)), forKey: "lyricFontSize")
     }
 
+    func resetLyricSize() { UserDefaults.standard.removeObject(forKey: "lyricFontSize") }
+
     private func makeOverlayIfNeeded() {
         if panel == nil {
             let window = LyricPanel(contentRect: NSRect(x: 0, y: 0, width: 390, height: 510),
@@ -119,6 +134,7 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
             window.isOpaque = false; window.backgroundColor = .clear; window.hasShadow = true
+            window.preservesContentDuringLiveResize = false
             window.isMovableByWindowBackground = true
             window.hidesOnDeactivate = false
             window.isReleasedWhenClosed = false
@@ -209,6 +225,8 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
         return false
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func windowWillStartLiveResize(_ notification: Notification) { isLiveResizing = true }
+    func windowDidEndLiveResize(_ notification: Notification) { isLiveResizing = false }
     func applicationWillTerminate(_ notification: Notification) {
         if let timingKeyMonitor { NSEvent.removeMonitor(timingKeyMonitor) }
         NSWorkspace.shared.notificationCenter.removeObserver(self)

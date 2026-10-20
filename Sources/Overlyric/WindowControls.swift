@@ -55,6 +55,9 @@ struct OptionsButton: NSViewRepresentable {
             add("Smaller lyrics") { self.app.resizeLyrics(by: -2) }
             menu.items.last?.keyEquivalent = "-"
             menu.items.last?.keyEquivalentModifierMask = .command
+            add("Reset lyric size") { self.app.resetLyricSize() }
+            menu.items.last?.keyEquivalent = "0"
+            menu.items.last?.keyEquivalentModifierMask = .command
             let alwaysShowHeader = UserDefaults.standard.object(forKey: "alwaysShowHeader") as? Bool ?? true
             add("Always show header") {
                 UserDefaults.standard.set(!alwaysShowHeader, forKey: "alwaysShowHeader")
