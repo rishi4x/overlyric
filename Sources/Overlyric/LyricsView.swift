@@ -8,6 +8,7 @@ struct LyricsView: View {
     @State private var scrubbing = false
     @State private var scrubPosition = 0.0
     @State private var browsing = false
+    @State private var panelSize = CGSize(width: 390, height: 510)
     @State private var timingToastVisible = false
     @State private var timingToastHideTask: Task<Void, Never>?
     @State private var scrollMetrics = LyricScrollMetrics()
@@ -24,6 +25,7 @@ struct LyricsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var accent: Color { player.accent }
+    private var layout: LyricLayout { LyricLayout(width: panelSize.width, height: panelSize.height) }
     private var controlsVisible: Bool { app.overlayHovered || scrubbing || popover || player.track == nil }
     private var availabilityActionsVisible: Bool { surfaceHovered || (!popover && app.overlayHovered) || showingAvailabilityInfo }
 
@@ -47,6 +49,7 @@ struct LyricsView: View {
         }
         .foregroundStyle(Color(white: 0.96))
         .preferredColorScheme(.dark)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { panelSize = $0 }
         .onHover { surfaceHovered = $0 }
         .sheet(isPresented: $showingLyricsSearch) { LyricsSearchView(player: player) }
         .onChange(of: player.timingAdjustmentCount) { _, _ in
@@ -251,7 +254,7 @@ struct LyricsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("UNSYNCED LYRICS").font(.system(size: 10, weight: .semibold)).tracking(2).foregroundStyle(accent)
-                    Text(plain).font(.system(size: fontSize - 3, weight: .semibold, design: .default)).lineSpacing(10)
+                    Text(plain).font(.system(size: layout.fontSize(base: fontSize - 3), weight: .semibold, design: .default)).lineSpacing(10 * layout.scale)
                         .textSelection(.enabled)
                 }.padding(26).frame(maxWidth: .infinity, alignment: .leading)
 
@@ -318,14 +321,15 @@ struct LyricsView: View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 22) {
+                    LazyVStack(alignment: .leading, spacing: layout.rowSpacing) {
                         ForEach(player.lines) { line in
                             let active = line.id == player.activeIndex
                             let emphasis = LyricEmphasis.at(line.id, activeIndex: player.activeIndex)
                             Button { player.seek(line.time - player.offset); browsing = false } label: {
                                 Text(line.text.isEmpty ? "♪" : line.text)
-                                    .font(.system(size: fontSize + 3, weight: .semibold, design: .default))
-                                    .lineSpacing(4).multilineTextAlignment(.leading)
+                                    .font(.system(size: layout.fontSize(base: fontSize + 3), weight: .semibold, design: .default))
+                                    .lineSpacing(4 * layout.scale).multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .foregroundStyle(.white.opacity(browsing ? (active ? 1 : 0.8) : emphasis.opacity))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .scaleEffect(active ? 1 : 0.86, anchor: .leading)
@@ -343,7 +347,7 @@ struct LyricsView: View {
                             .id(line.id)
                         }
                     }
-                    .padding(.horizontal, 28)
+                    .padding(.horizontal, layout.horizontalPadding)
                     .padding(.vertical, geometry.size.height / 2)
                 }
                 .scrollIndicators(.never)
@@ -369,17 +373,15 @@ struct LyricsView: View {
                     guard !browsing, let index = player.activeIndex ?? player.lines.first?.id else { return }
                     withAnimation(lineAnimation) { proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42)) }
                 }
-                .onChange(of: geometry.size) { _, _ in
+                .task(id: geometry.size) {
+                    // Let wrapping settle before restoring the active line's anchor.
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
                     if !browsing, let index = player.activeIndex ?? player.lines.first?.id {
                         proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42))
                     }
                 }
                 .onChange(of: player.track?.id) { _, _ in browsing = false }
-                .task {
-                    // Wait for the scroll content to lay out before centering its first cue.
-                    await Task.yield()
-                    if let index = player.activeIndex ?? player.lines.first?.id { proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42)) }
-                }
                 .overlay(alignment: .bottom) {
                     if browsing && !timingToastVisible {
                         Button { browsing = false; if let index = player.activeIndex ?? player.lines.first?.id { withAnimation(lineAnimation) { proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42)) } } } label: {

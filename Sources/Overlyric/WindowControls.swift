@@ -49,12 +49,12 @@ struct OptionsButton: NSViewRepresentable {
                 menu.items.last?.state = app.mode == mode ? .on : .off
             }
             menu.addItem(.separator())
-            func resize(_ delta: Double) {
-                let size = UserDefaults.standard.object(forKey: "lyricFontSize") as? Double ?? 27
-                UserDefaults.standard.set(min(42, max(18, size + delta)), forKey: "lyricFontSize")
-            }
-            add("Larger lyrics") { resize(2) }
-            add("Smaller lyrics") { resize(-2) }
+            add("Larger lyrics") { self.app.resizeLyrics(by: 2) }
+            menu.items.last?.keyEquivalent = "+"
+            menu.items.last?.keyEquivalentModifierMask = .command
+            add("Smaller lyrics") { self.app.resizeLyrics(by: -2) }
+            menu.items.last?.keyEquivalent = "-"
+            menu.items.last?.keyEquivalentModifierMask = .command
             let alwaysShowHeader = UserDefaults.standard.object(forKey: "alwaysShowHeader") as? Bool ?? true
             add("Always show header") {
                 UserDefaults.standard.set(!alwaysShowHeader, forKey: "alwaysShowHeader")

@@ -73,8 +73,17 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
         timingKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let window = event.window, window.isKeyWindow,
                   window === self.panel || (self.popover.isShown && window === self.popover.contentViewController?.view.window),
-                  !(window.firstResponder is NSTextView), !self.player.lines.isEmpty,
-                  event.modifierFlags.intersection([.command, .option, .control, .shift]) == .option else { return event }
+                  !(window.firstResponder is NSTextView) else { return event }
+            let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+            if modifiers == .command || modifiers == [.command, .shift] {
+                switch event.charactersIgnoringModifiers {
+                case "+", "=": self.resizeLyrics(by: 2)
+                case "-": self.resizeLyrics(by: -2)
+                default: return event
+                }
+                return nil
+            }
+            guard modifiers == .option, !self.player.lines.isEmpty else { return event }
             switch event.keyCode {
             case 123: self.player.adjustTiming(by: 0.5)
             case 124: self.player.adjustTiming(by: -0.5)
@@ -95,6 +104,11 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
         }
     }
 
+    func resizeLyrics(by delta: Double) {
+        let size = UserDefaults.standard.object(forKey: "lyricFontSize") as? Double ?? 27
+        UserDefaults.standard.set(min(42, max(18, size + delta)), forKey: "lyricFontSize")
+    }
+
     private func makeOverlayIfNeeded() {
         if panel == nil {
             let window = LyricPanel(contentRect: NSRect(x: 0, y: 0, width: 390, height: 510),
@@ -109,7 +123,7 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
             window.hidesOnDeactivate = false
             window.isReleasedWhenClosed = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            window.minSize = NSSize(width: 320, height: 320)
+            window.minSize = NSSize(width: LyricLayout.minimumWidth, height: LyricLayout.minimumHeight)
             window.maxSize = NSSize(width: 850, height: 1200)
             window.level = pinned ? .floating : .normal
             window.delegate = self
@@ -119,6 +133,10 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
             }
             window.contentView = hostingView
             if !window.setFrameUsingName("lyricOverlay") { window.center() }
+            var restoredFrame = window.frame
+            restoredFrame.size.width = min(window.maxSize.width, max(window.minSize.width, restoredFrame.width))
+            restoredFrame.size.height = min(window.maxSize.height, max(window.minSize.height, restoredFrame.height))
+            window.setFrame(restoredFrame, display: false)
             window.setFrameAutosaveName("lyricOverlay")
             panel = window
         }
