@@ -6,6 +6,7 @@ import LyricsCore
 struct ArtworkAsset: Sendable {
     let data: Data
     let dominant: RGBColor?
+    let palette: [RGBColor]
 }
 
 actor ArtworkLoader {
@@ -27,14 +28,15 @@ actor ArtworkLoader {
               ] as CFDictionary) else { throw URLError(.cannotDecodeContentData) }
         let width = image.width, height = image.height
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let dominant = pixels.withUnsafeMutableBytes { buffer -> RGBColor? in
+        let decoded = pixels.withUnsafeMutableBytes { buffer -> Bool in
             guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
                 bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return nil }
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return false }
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return RGBColor.dominant(in: Array(buffer))
+            return true
         }
-        let asset = ArtworkAsset(data: data, dominant: dominant)
+        let asset = ArtworkAsset(data: data, dominant: decoded ? RGBColor.dominant(in: pixels) : nil,
+            palette: decoded ? RGBColor.ambiencePalette(in: pixels) : [])
         if cache.count >= 50 { cache.removeAll() }
         cache[url] = asset
         return asset

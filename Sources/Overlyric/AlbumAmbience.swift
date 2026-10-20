@@ -1,55 +1,38 @@
 import SwiftUI
 
-/// Broad, low-contrast color fields fade across the edges of the panel.
+/// Sparse artwork hues float over the glass; uncolored regions stay transparent.
 struct AlbumAmbience: View {
-    let artwork: NSImage?
-    let accent: Color
-    let playing: Bool
+    let colors: [Color]
     let enabled: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let centers = [UnitPoint(x: 1.02, y: 1.03), UnitPoint(x: -0.12, y: -0.1), UnitPoint(x: 1.2, y: 0.22)]
+    private let strengths = [0.2, 0.13, 0.085]
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color.black.opacity(0.28)
-                if enabled && artwork != nil {
-                    if playing && !reduceMotion {
-                        glow(size: geometry.size)
-                            .phaseAnimator([false, true]) { content, phase in
-                                content
-                                    .scaleEffect(phase ? 1.04 : 1, anchor: .bottomTrailing)
-                                    .rotationEffect(.degrees(phase ? 3 : -3), anchor: .bottomTrailing)
-                                    .offset(x: phase ? 6 : -6, y: phase ? -8 : 4)
-                            } animation: { _ in .easeInOut(duration: 26) }
-                    } else {
-                        glow(size: geometry.size)
+                if enabled && !colors.isEmpty {
+                    ForEach(0..<min(3, max(2, colors.count)), id: \.self) { index in
+                        let color = colors[index % colors.count]
+                        let strength = strengths[index]
+                        RadialGradient(stops: [
+                            .init(color: color.opacity(strength), location: 0),
+                            .init(color: color.opacity(strength * 0.55), location: 0.35),
+                            .init(color: color.opacity(strength * 0.12), location: 0.75),
+                            .init(color: .clear, location: 1)
+                        ], center: centers[index], startRadius: 0,
+                            endRadius: max(geometry.size.width, geometry.size.height) * 1.15)
+                        .transition(.opacity)
                     }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .clipped()
-            .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: accent)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: colors)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-
-    private func glow(size: CGSize) -> some View {
-        let spread = max(size.width, size.height)
-        return ZStack {
-            RadialGradient(stops: [
-                .init(color: accent.opacity(0.18), location: 0),
-                .init(color: accent.opacity(0.09), location: 0.35),
-                .init(color: accent.opacity(0.025), location: 0.72),
-                .init(color: .clear, location: 1)
-            ], center: UnitPoint(x: 1.02, y: 1.03), startRadius: 0, endRadius: spread * 1.05)
-            RadialGradient(stops: [
-                .init(color: accent.opacity(0.085), location: 0),
-                .init(color: accent.opacity(0.035), location: 0.45),
-                .init(color: .clear, location: 1)
-            ], center: UnitPoint(x: 0.18, y: -0.12), startRadius: 0, endRadius: spread * 0.85)
-        }
-        .frame(width: size.width, height: size.height)
-        .blur(radius: 40)
     }
 }

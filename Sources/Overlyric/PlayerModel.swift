@@ -44,6 +44,7 @@ final class PlayerModel: ObservableObject {
         timingAdjustmentCount += 1
     }
     @Published var artwork: NSImage?
+    @Published private(set) var ambienceColors: [Color] = []
     @Published var accent = Color(white: 0.72)
     private let timing = TimingPreferences()
     private let recordings = RecordingPreferences()
@@ -139,6 +140,7 @@ final class PlayerModel: ObservableObject {
         artworkTask?.cancel()
         artworkURL = url
         artwork = nil
+        ambienceColors = []
         accent = Color(white: 0.72)
         guard let url else { return }
         artworkTask = Task {
@@ -146,6 +148,12 @@ final class PlayerModel: ObservableObject {
                 let asset = try await artworkLoader.load(url)
                 guard !Task.isCancelled, artworkURL == url else { return }
                 artwork = NSImage(data: asset.data)
+                ambienceColors = asset.palette.map { rgb in
+                    let color = NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
+                    return Color(nsColor: NSColor(calibratedHue: color.hueComponent,
+                        saturation: min(1, color.saturationComponent * 1.1),
+                        brightness: min(0.85, max(0.6, color.brightnessComponent)), alpha: 1))
+                }
                 if let rgb = asset.dominant {
                     let color = NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
                     // Lift dark covers enough for the progress fill to stay visible on glass.

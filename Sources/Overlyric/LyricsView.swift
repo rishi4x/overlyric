@@ -92,7 +92,7 @@ struct LyricsView: View {
             // Instrumentals center their entire visible group in the panel.
             // Lyrics keep a stable viewport, unaffected by hover controls.
             .padding(.top, showingRecordingPicker ? 112 : (!player.instrumental && (popover || alwaysShowHeader) ? 77 : 0))
-            .background { AlbumAmbience(artwork: player.artwork, accent: accent, playing: player.isPlaying, enabled: ambienceEnabled) }
+            .background { AlbumAmbience(colors: player.ambienceColors, enabled: ambienceEnabled) }
             .overlay(alignment: .top) {
                 VStack(spacing: 0) {
                     header.padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 16)

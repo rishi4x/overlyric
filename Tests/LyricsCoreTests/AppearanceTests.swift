@@ -37,6 +37,34 @@ final class AppearanceTests: XCTestCase {
         XCTAssertEqual(color.green, color.blue)
     }
 
+    func testAmbienceOmitsNeutralsAndPreservesDistinctBoldHues() {
+        let families: [([UInt8], Int)] = [([250, 250, 250, 255], 100), ([8, 6, 8, 255], 100),
+                                        ([220, 25, 25, 255], 10), ([25, 25, 220, 255], 8),
+                                        ([25, 220, 25, 255], 6)]
+        var pixels: [UInt8] = []
+        for (pixel, count) in families {
+            for _ in 0..<count { pixels.append(contentsOf: pixel) }
+        }
+        let palette = RGBColor.ambiencePalette(in: pixels)
+        XCTAssertEqual(palette.count, 3)
+        XCTAssertGreaterThan(palette[0].red, palette[0].blue)
+        XCTAssertTrue(palette.contains { $0.blue > $0.red && $0.blue > $0.green })
+        XCTAssertTrue(palette.contains { $0.green > $0.red && $0.green > $0.blue })
+        XCTAssertEqual(RGBColor.ambiencePalette(in: pixels, limit: 1).count, 1)
+        XCTAssertTrue(RGBColor.ambiencePalette(in: pixels, limit: 0).isEmpty)
+    }
+
+    func testAmbienceDoesNotInventColorsForNeutralOrTransparentCovers() {
+        XCTAssertTrue(RGBColor.ambiencePalette(in: [255, 255, 255, 255, 110, 110, 110, 255, 8, 6, 8, 255]).isEmpty)
+        XCTAssertTrue(RGBColor.ambiencePalette(in: [230, 10, 10, 0]).isEmpty)
+        XCTAssertTrue(RGBColor.ambiencePalette(in: []).isEmpty)
+    }
+
+    func testAmbienceMergesSimilarHuesAcrossTheRedHueBoundary() {
+        let palette = RGBColor.ambiencePalette(in: [240, 20, 30, 255, 240, 30, 20, 255])
+        XCTAssertEqual(palette.count, 1)
+    }
+
     func testTimingPreferencesRestorePerTrackAndResetIndependently() throws {
         let suite = "OverlyricTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
