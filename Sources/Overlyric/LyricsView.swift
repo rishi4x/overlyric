@@ -19,6 +19,7 @@ struct LyricsView: View {
     @State private var surfaceHovered = false
     @State private var showingAvailabilityInfo = false
     @AppStorage("alwaysShowHeader") private var alwaysShowHeader = true
+    @AppStorage("ambienceEnabled") private var ambienceEnabled = true
     @AppStorage("lyricFontSize") private var fontSize = 27.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -78,6 +79,7 @@ struct LyricsView: View {
             // Instrumentals center their entire visible group in the panel.
             // Lyrics keep a stable viewport, unaffected by hover controls.
             .padding(.top, !player.instrumental && (popover || alwaysShowHeader) ? 77 : 0)
+            .background { AlbumAmbience(artwork: player.artwork, accent: accent, playing: player.isPlaying, enabled: ambienceEnabled) }
             .overlay(alignment: .top) {
                 if headerVisible {
                     VStack(spacing: 0) {

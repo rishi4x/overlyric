@@ -131,8 +131,8 @@ final class PlayerModel: ObservableObject {
                     let color = NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
                     // Lift dark covers enough for the progress fill to stay visible on glass.
                     accent = Color(nsColor: NSColor(calibratedHue: color.hueComponent,
-                        saturation: min(0.85, color.saturationComponent),
-                        brightness: max(0.72, color.brightnessComponent), alpha: 1))
+                        saturation: min(1, color.saturationComponent * 1.15),
+                        brightness: max(0.65, color.brightnessComponent), alpha: 1))
                 }
             } catch { /* Artwork is optional; lyrics and playback remain available. */ }
         }

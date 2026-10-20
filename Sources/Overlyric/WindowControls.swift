@@ -60,6 +60,11 @@ struct OptionsButton: NSViewRepresentable {
                 UserDefaults.standard.set(!alwaysShowHeader, forKey: "alwaysShowHeader")
             }
             menu.items.last?.state = alwaysShowHeader ? .on : .off
+            let ambienceEnabled = UserDefaults.standard.object(forKey: "ambienceEnabled") as? Bool ?? true
+            add("Ambience") {
+                UserDefaults.standard.set(!ambienceEnabled, forKey: "ambienceEnabled")
+            }
+            menu.items.last?.state = ambienceEnabled ? .on : .off
             menu.addItem(.separator())
             add(String(format: "Lyric timing: %+.1fs", player.offset), enabled: false) {}
             add("Advance lyrics 0.5s") { self.player.adjustTiming(by: 0.5) }

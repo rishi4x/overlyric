@@ -15,8 +15,8 @@ struct PlaybackScrubber: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             ZStack(alignment: .leading) {
-                Capsule().fill(Color(white: 0.24)).frame(height: 3)
-                Capsule().fill(accent).frame(width: width * fraction, height: 3)
+                Capsule().fill(Color(white: 0.24)).frame(height: 5)
+                Capsule().fill(accent).frame(width: width * fraction, height: 5)
                 if hovering || dragging != nil {
                     Circle().fill(.white).frame(width: 9, height: 9)
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
