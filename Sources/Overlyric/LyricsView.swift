@@ -107,8 +107,9 @@ struct LyricsView: View {
                         .init(color: .black.opacity(0.8), location: 0.45),
                         .init(color: .black.opacity(0.45), location: 0.72),
                         .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                        .contentShape(Rectangle()).onTapGesture { }
+                        .accessibilityHidden(true)
                         .padding(.bottom, -55)
-                        .allowsHitTesting(false)
                 }
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { view in
                     view.opacity(headerVisible ? 1 : 0)
@@ -124,7 +125,9 @@ struct LyricsView: View {
                             .init(color: .black.opacity(0.65), location: 0.3),
                             .init(color: .black.opacity(0.9), location: 0.6),
                             .init(color: .black.opacity(0.95), location: 1)], startPoint: .top, endPoint: .bottom)
-                            .padding(.top, -35).allowsHitTesting(false)
+                            .contentShape(Rectangle()).onTapGesture { }
+                            .accessibilityHidden(true)
+                            .padding(.top, -35)
                     }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { view in
                         view.opacity(controlsVisible ? 1 : 0)
