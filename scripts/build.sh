@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export CLANG_MODULE_CACHE_PATH="$PWD/.build/ModuleCache"
+export SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/ModuleCache"
+swift build -c release --disable-sandbox
+BIN_DIR="$(swift build -c release --disable-sandbox --show-bin-path)"
+APP="dist/Overlyric.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN_DIR/Overlyric" "$APP/Contents/MacOS/Overlyric"
+cp Resources/Info.plist "$APP/Contents/Info.plist"
+codesign --force --sign - --entitlements Resources/Overlyric.entitlements "$APP"
+echo "Built $(pwd)/$APP"
