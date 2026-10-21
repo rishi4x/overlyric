@@ -1,17 +1,17 @@
 # Overlyric
 
-Resizable Spotify lyrics overlay for macOS.
+Spotify Lyrics overlay for macOS.
 
-[![Overlyric demo](docs/demo.gif)](https://github.com/rishi4x/overlyric/blob/main/docs/demo.mp4)
+[![Watch the Overlyric demo](docs/preview.jpg)](https://github.com/rishi4x/overlyric/releases/download/v1.0.0/demo.mp4)
 
-[Watch the video](https://github.com/rishi4x/overlyric/blob/main/docs/demo.mp4) · [Download](https://github.com/rishi4x/overlyric/releases/latest)
+[Watch the video](https://github.com/rishi4x/overlyric/releases/download/v1.0.0/demo.mp4) · [Download](https://github.com/rishi4x/overlyric/releases/latest)
 
 ## Install
 
 Requires macOS 15 or later and the Spotify desktop app. Supports Apple Silicon and Intel Macs.
 
-1. Download the ZIP from [Releases](https://github.com/rishi4x/overlyric/releases/latest) and extract it.
-2. Move **Overlyric.app** to **Applications**, then open it.
+1. Download the DMG from [Releases](https://github.com/rishi4x/overlyric/releases/latest) and open it.
+2. Drag **Overlyric.app** onto **Applications**, eject the disk image, then open Overlyric from Applications.
 3. Allow access to Spotify when macOS asks. Use the menu bar icon to show lyrics.
 
 The app has no Developer ID signature and is not notarized. If macOS blocks it, try opening it once, then go to **System Settings → Privacy & Security → Open Anyway**. [Apple’s instructions](https://support.apple.com/en-us/102445).
@@ -52,4 +52,4 @@ bash scripts/package-release.sh
 swift test --disable-sandbox
 ```
 
-The app and release ZIP are written to `dist/`. Builds use no developer certificate; Apple Silicon executables retain the build tools’ anonymous ad hoc signature.
+The app and release DMG are written to `dist/`. Builds use no developer certificate; Apple Silicon executables retain the build tools’ anonymous ad hoc signature.
