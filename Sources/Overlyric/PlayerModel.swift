@@ -52,7 +52,12 @@ final class PlayerModel: ObservableObject {
     private var artworkTask: Task<Void, Never>?
     private var artworkURL: URL?
     private let spotify = SpotifyBridge()
-    private let lyrics = LyricsClient()
+    private let lyrics = LyricsResolver(diskCache: LyricsDiskCache())
+    @Published private(set) var lyricsSource = "LRCLIB"
+    private var currentLyricsSource: LyricsSource = .lrclib
+    private func recordingKey(for trackID: String) -> String {
+        currentLyricsSource == .netease ? "netease:\(trackID)" : trackID
+    }
     private var pollTask: Task<Void, Never>?
     private var lyricTask: Task<Void, Never>?
     private var lyricRequestID = UUID()
@@ -173,23 +178,25 @@ final class PlayerModel: ObservableObject {
         lines = []; plainLyrics = nil; candidates = []; loading = true
         showAlternateRecordingNotice = false; selectedRecordingID = nil
         instrumental = false; lyricLoadFailed = false
+        lyricsSource = "LRCLIB"
+        currentLyricsSource = .lrclib
         lyricTask = Task {
             defer { if lyricRequestID == requestID { loading = false } }
             do {
-                // Allow Spotify's track metadata to settle during a transition. A newer
-                // snapshot cancels this task before any lookup for the old snapshot starts.
-                try await Task.sleep(for: .milliseconds(750))
+                // Cached lyrics can appear immediately; newer track snapshots cancel this lookup.
                 try Task.checkCancellation()
-                let result = try await lyrics.lookup(track, refresh: refresh)
+                let resolution = try await lyrics.lookup(track, refresh: refresh)
                 guard !Task.isCancelled, lyricRequestID == requestID, self.track == track else { return }
-                switch result {
+                currentLyricsSource = resolution.source
+                lyricsSource = resolution.source.title
+                switch resolution.lookup {
                 case .record(let record): applyRecording(record)
                 case .candidates(let matches):
-                    if let record = recordings.preferredRecording(in: matches, for: track.id) {
+                    if let record = recordings.preferredRecording(in: matches, for: recordingKey(for: track.id)) {
                         candidates = matches
                         applyRecording(record)
-                        recordings.remember(record.id, for: track.id)
-                        showAlternateRecordingNotice = !recordings.isNoticeDismissed(for: track.id)
+                        recordings.remember(record.id, for: recordingKey(for: track.id))
+                        showAlternateRecordingNotice = !recordings.isNoticeDismissed(for: recordingKey(for: track.id))
                     } else {
                         showNoLyrics(instrumental: false)
                     }
@@ -209,19 +216,34 @@ final class PlayerModel: ObservableObject {
         lyricTask?.cancel()
         lyricRequestID = UUID()
         loading = false
-        applyRecording(record)
-        if let track {
-            recordings.remember(record.id, for: track.id)
-            dismissAlternateRecordingNotice()
+        guard let track else { return }
+        let requestID = lyricRequestID
+        loading = true
+        lyricTask = Task {
+            defer { if lyricRequestID == requestID { loading = false } }
+            do {
+                let resolved = try await lyrics.fetch(record)
+                guard !Task.isCancelled, lyricRequestID == requestID, self.track == track else { return }
+                applyRecording(resolved)
+                await lyrics.remember(resolved, for: track)
+                guard !Task.isCancelled, lyricRequestID == requestID, self.track == track else { return }
+                recordings.remember(record.id, for: recordingKey(for: track.id))
+                dismissAlternateRecordingNotice()
+            } catch {
+                guard !Task.isCancelled, lyricRequestID == requestID, self.track == track else { return }
+                controlError = "Couldn’t load this recording. Try another version."
+            }
         }
     }
 
     func dismissAlternateRecordingNotice() {
-        if let track { recordings.dismissNotice(for: track.id) }
+        if let track { recordings.dismissNotice(for: recordingKey(for: track.id)) }
         showAlternateRecordingNotice = false
     }
 
     private func applyRecording(_ record: LyricsRecord) {
+        currentLyricsSource = record.source ?? .lrclib
+        lyricsSource = currentLyricsSource.title
         selectedRecordingID = record.id
         lines = LRC.parse(record.syncedLyrics ?? "")
         if !lines.contains(where: { !$0.text.isEmpty }) { lines = [] }
@@ -235,7 +257,7 @@ final class PlayerModel: ObservableObject {
         self.instrumental = instrumental
         lyricLoadFailed = false
         message = instrumental ? "Feel the music" : "No lyrics available"
-        detail = instrumental ? "LRCLIB lists this song as instrumental." : "No lyrics are listed for this recording yet."
+        detail = instrumental ? "\(lyricsSource) marks this recording as instrumental." : "No lyrics are listed for this recording yet."
     }
 
     func searchLyrics(title: String, artist: String) async throws -> [LyricsRecord] {

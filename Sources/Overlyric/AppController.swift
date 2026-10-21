@@ -47,6 +47,17 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
         didSet { UserDefaults.standard.set(pinned, forKey: "pinned"); panel?.level = pinned ? .floating : .normal }
     }
     let player = PlayerModel()
+    let loginItem = LoginAtLogin()
+
+    func toggleStartAtLogin() {
+        do { try loginItem.setEnabled(!loginItem.isEnabled) }
+        catch {
+            let alert = NSAlert()
+            alert.messageText = "Couldn’t change Start at login"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
+    }
     private var statusItem: NSStatusItem!
     private var panel: LyricPanel?
     private let popover = NSPopover()

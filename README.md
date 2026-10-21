@@ -1,44 +1,55 @@
 # Overlyric
 
-A personal native macOS lyric companion for the Spotify desktop app. Built with SwiftUI and AppKit, with no external dependencies or Spotify developer account required.
+Resizable Spotify lyrics overlay for macOS.
 
-## Run
+[![Overlyric demo](docs/demo.gif)](https://github.com/rishi4x/overlyric/blob/main/docs/demo.mp4)
 
-Requires macOS 15 or later and Xcode 16 or later. Liquid Glass is used on macOS 26 and later; macOS 15 uses a frosted material fallback.
+[Watch the video](https://github.com/rishi4x/overlyric/blob/main/docs/demo.mp4) · [Download](https://github.com/rishi4x/overlyric/releases/latest)
+
+## Install
+
+Requires macOS 15 or later and the Spotify desktop app. Supports Apple Silicon and Intel Macs.
+
+1. Download the ZIP from [Releases](https://github.com/rishi4x/overlyric/releases/latest) and extract it.
+2. Move **Overlyric.app** to **Applications**, then open it.
+3. Allow access to Spotify when macOS asks. Use the menu bar icon to show lyrics.
+
+The app has no Developer ID signature and is not notarized. If macOS blocks it, try opening it once, then go to **System Settings → Privacy & Security → Open Anyway**. [Apple’s instructions](https://support.apple.com/en-us/102445).
+
+Alternatively, if you trust this download, remove its quarantine flag in Terminal, then open it again:
 
 ```sh
-bash scripts/build.sh
-open dist/Overlyric.app
+xattr -dr com.apple.quarantine /Applications/Overlyric.app
 ```
-
-Allow Overlyric to control Spotify when macOS asks. If access was denied, enable it in **System Settings → Privacy & Security → Automation**, then choose **Reconnect Spotify** from the app’s ⋯ menu. Launch the `.app` bundle rather than `swift run` so macOS can identify the app and its permission description.
 
 ## Use
 
-- Choose one of three independent modes in ⋯ or the menu bar icon’s right-click menu: **Show in menu bar**, **Show as overlay**, or **Attach to Spotify**. The selection saves locally. Existing Spotify-following preferences migrate to the attached mode.
-- **Menu bar** shows lyrics in a popover. Switching to this mode opens it immediately; clicking the menu bar icon toggles it.
-- **Overlay** works independently of Spotify focus. Clicking the menu bar icon brings an obscured or hidden overlay to the front on the first click. Clicking again while the overlay has focus hides it.
-- **Attach to Spotify** shows the floating lyrics when Spotify is focused and hides them when you switch apps. Interacting with the visible overlay keeps it open. Left-clicking the menu bar icon switches to independent **Overlay** mode and brings it forward.
-- Drag the floating header/background to move the window. Drag an edge or corner to resize, down to a 340 × 360 pt minimum. Lyrics combine gradual font and spacing scaling with natural wrapping; width drives most of the scaling, while height has a smaller effect. Header and playback controls stay at their normal size. **Command–Plus** (or **Command–=**) and **Command–Minus** adjust the saved lyric font size when either lyrics panel is focused; **Command–0** restores the default size. Resizing uses native macOS edge and corner handles; the visible surface meets the actual window edge. Header and footer shading track live resizing without animated geometry. The active line keeps its anchor while following. Its position and size are saved.
-- Pin keeps the overlay above other windows, including across Spaces. Use its mode button to tuck it back into the menu bar; the floating overlay has no close button.
-- Lyrics use the standard system sans-serif with sharper letterforms. The current lyric sits slightly above center and grows and brightens with a spring transition as playback follows each line. The current line stays sharp with slightly softened opacity; the next line has a slight blur, and surrounding lines progressively fade and blur with distance. Blur scales with the rendered font size so its strength stays consistent during resizing and font zoom. Before the first timestamp, the first line stays centered at its ordinary size and color. Reduce Motion disables these animations. Click a line to seek Spotify. Gaps between distant lines are slightly tighter than those around the current line. Scroll to browse without changing lyric opacity or colors; only the blur clears. Click **Follow lyrics** to resume following.
-- Hover over the overlay for progress, play/pause, previous/next track, and ±10-second controls. The controls and their scrim float over the lyrics and fade away without changing the lyric viewport. Controls are always visible in the menu bar popover. The lyric scrollbar is a floating, draggable handle with no track or reserved gutter, so showing it does not change wrapping. It is drawn above the lyric fade and header/footer gradients, constrained below the header and above the playback area, and fades 0.9 seconds after manual scrolling or dragging stops. The Follow lyrics button uses a darker, more opaque glass surface. The scrubber handle appears only while hovering over or dragging the scrubber. Album artwork comes from Spotify; its dominant visible color supplies the accent and progress fill, with dark colors brightened for readability. Color extraction skips near-black shadows and neutral backgrounds when usable cover colors exist, preventing faint shadow tints from becoming bright accents; missing colors use a neutral fallback.
-- Ambience extracts up to three bold, distinct hues from the cover, ignoring dark shadows and near-neutral whites and grays. The colors spread into broad, low-opacity gradients over the native glass, preserving background transparency rather than displaying an opaque cover image. **Ambience** in ⋯ toggles the effect for both presentation modes; it defaults on and saves locally. The color layer stays still between cover changes, avoiding continuous animation, and fills both presentation modes. Palette changes fade unless Reduce Motion is enabled.
-- Use ⋯ for font size, **Always show header**, lyric timing adjustment, reloading lyrics, reconnecting Spotify, and the LRCLIB link. **Always show header** keeps the artwork and song information visible; the right-side buttons appear only while hovering over the panel. Turning it off hides the floating header until hover and centers the active line in the entire panel. The menu bar popover keeps its header visible. These options use a native menu that stays stable while playback updates. With either lyrics panel focused, **Option–Right** delays lyrics and **Option–Left** advances them in 0.5-second steps. **Space** toggles play/pause, and unmodified **Left/Right** seek backward/forward 10 seconds in either focused panel. Holding Space does not repeatedly toggle playback. The shortcuts leave text editing alone. A toast above the playback area shows the total adjustment, bounces on each change (unless Reduce Motion is enabled), and fades two seconds after the last adjustment. It temporarily replaces **Follow lyrics**; menu timing adjustments show the same toast. Positive timing offsets advance the lyrics. Timing offsets save locally by Spotify track ID, persist across restarts, and restore on returning to a song; Reset timing clears that song’s saved offset.
+- Show lyrics in a floating overlay, in the menu bar, or only alongside Spotify.
+- Click a lyric to seek. Scroll to browse, then click **Follow lyrics** to resume.
+- Hover for playback controls. Use **⋯** for appearance, lyric timing, search, and reloading.
+- **⋯ → Start at login** launches the app when you sign in to your Mac. Off by default.
+- Lyrics come from LRCLIB, with NetEase as fallback. Both are queried concurrently; LRCLIB is preferred. No account sign-in is needed.
 
-Lyrics come from [LRCLIB](https://lrclib.net/docs), matched by song, artist, album, and duration. If the exact recording is missing, the first alternate recording is used automatically (versions are sorted by duration difference), or a previously chosen version is restored when it is still available. On hover, a prompt below the header says **Wrong lyrics?** with **Click to choose a different one** beneath it, which opens the recording picker without hiding its title beneath the header. Durations use a neutral text color. Dismissing the prompt saves that preference per Spotify song; choosing a version saves the selection and dismisses the prompt. Undismissed prompts return when that song plays again. Manual search remains available in ⋯. Choosing a different version may require adjusting lyric timing. Instrumental markers are retained even when they have no lyric text. An exact instrumental record, or uncontradicted markers for the same song/artist/album within 15 seconds of Spotify’s duration, produces the gentle **Feel the music** state with the always-visible subtitle **No lyrics on this one.** The waveform icon, title, and subtitle are centered together in the whole panel in both window and menu bar modes. On hover, the compact action row joins that group and the complete group re-centers with a short animation. Synced lyric positioning stays fixed. Its LRCLIB explanation is available as a tooltip on the title and through the information button. **Search manually**, **Check again**, and the information icon appear together in one row on hover, using flat buttons; in the instrumental state their appearance gently moves the group upward to keep it centered. The waveform stays a static icon; no audio capture is enabled. Missing records produce **No lyrics available**, not an error and not a claim that a song is instrumental. Plain lyrics are shown when timed lyrics are unavailable; they cannot be used for seeking. Missing lyrics, instrumentals, network failures, and Spotify permission failures have dedicated states. Successful automatic lookup outcomes (including instrumentals and missing lyrics) are cached in memory for up to 100 tracks. **Check again** and **Reload lyrics** bypass this cache. **Search manually** in empty states, or **Search lyrics…** in ⋯, opens a search with equal-width labeled song/artist fields and an icon search button so you can select a different recording, including instrumental records. Selecting a result cancels any pending lookup; changing tracks dismisses the search to prevent applying results to a different song. Lookups wait 750 ms for track metadata to settle; changing tracks cancels pending lookups and retries. Temporary HTTP errors (408, 429, and 5xx) and transient network failures retry up to three times with 1-, 2-, and 4-second backoff. Numeric Retry-After headers are respected up to 30 seconds. Missing recordings (404) use search instead of repeating the same failed lookup. Exact lookups that still return a 5xx after retries also try search before reporting a temporary service failure. Service failures are never cached or treated as evidence that lyrics do not exist.
+With the lyrics panel focused:
 
-Spotify’s local AppleScript interface supplies playback metadata and controls. Track metadata is sent to LRCLIB to look up lyrics. No account tokens, analytics, or hosted backend are used. Spotify web playback and playback solely on another device are not supported.
+| Shortcut | Action |
+| --- | --- |
+| Space | Play or pause |
+| ← / → | Back or forward 10 seconds |
+| Option–← / Option–→ | Advance or delay lyrics by 0.5 seconds |
+| Command–+ / Command–− | Increase or decrease lyric size |
+| Command–0 | Reset lyric size |
 
-## Develop
+Settings, recording choices, and song timing save locally. Lyrics cache for 30 days, up to 1,000 songs or 20 MB, evicting the least recently accessed first. **Reload lyrics** requests fresh lyrics.
+
+## Build
+
+Requires Xcode and its command-line tools.
 
 ```sh
-swift build
-swift test
+bash scripts/build.sh
+bash scripts/package-release.sh
+swift test --disable-sandbox
 ```
 
-Playback progress updates are isolated to the footer, and scroll-position updates to the scrollbar. The lyric panel updates its active cue only when that cue changes, with a short, critically damped transition.
-
-`Sources/LyricsCore` contains LRCLIB lookup and LRC parsing. `Sources/Overlyric` contains the Spotify bridge, playback state, shared lyric view, and menu bar/window lifecycle. Tests cover repeated timestamps, offsets, blank cues, malformed seconds, seek boundaries, HTTP/network recovery, retry limits, Retry-After, cancellation, and successful lookup caching, dominant artwork colors, and per-track timing persistence, and the three display modes, first-click overlay restoration, mode migration, focus-dependent visibility, progressive lyric emphasis, and scrollbar sizing/offset mapping, instrumental fallback across duration mismatches, contradictory records, missing-result rechecks, and search recovery after 503 errors.
-
-The build script creates a locally signed app in `dist/`. It is intended for personal use on the build machine, rather than notarized distribution. You can open `Package.swift` in Xcode to work on the source.
+The app and release ZIP are written to `dist/`. Builds use no developer certificate; Apple Silicon executables retain the build tools’ anonymous ad hoc signature.

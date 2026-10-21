@@ -81,8 +81,13 @@ struct OptionsButton: NSViewRepresentable {
             add("Search lyrics…", enabled: player.track != nil) { self.onSearch() }
             add("Reload lyrics", enabled: player.track != nil) { self.player.loadLyrics() }
             add("Reconnect Spotify") { self.player.reconnect() }
-            add("Lyrics from LRCLIB") { NSWorkspace.shared.open(URL(string: "https://lrclib.net")!) }
             menu.addItem(.separator())
+            add("Lyrics from \(player.lyricsSource)", enabled: false) {}
+            add("Visit LRCLIB") { NSWorkspace.shared.open(URL(string: "https://lrclib.net")!) }
+            add("Visit NetEase") { NSWorkspace.shared.open(URL(string: "https://music.163.com")!) }
+            menu.addItem(.separator())
+            add("Start at login") { self.app.toggleStartAtLogin() }
+            menu.items.last?.state = app.loginItem.isEnabled ? .on : .off
             add("Quit Overlyric") { NSApp.terminate(nil) }
             menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.minY - 5), in: sender)
         }

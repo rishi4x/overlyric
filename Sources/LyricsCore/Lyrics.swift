@@ -41,7 +41,7 @@ public enum LRC {
     }
 }
 
-public struct Track: Hashable, Sendable {
+public struct Track: Hashable, Codable, Sendable {
     public let id: String
     public let title: String
     public let artist: String
@@ -53,7 +53,12 @@ public struct Track: Hashable, Sendable {
     }
 }
 
-public struct LyricsRecord: Decodable, Identifiable, Sendable {
+public enum LyricsSource: String, Codable, Sendable {
+    case lrclib, netease
+    public var title: String { self == .lrclib ? "LRCLIB" : "NetEase" }
+}
+
+public struct LyricsRecord: Codable, Identifiable, Sendable {
     public let id: Int
     public let trackName: String
     public let artistName: String
@@ -62,6 +67,7 @@ public struct LyricsRecord: Decodable, Identifiable, Sendable {
     public let instrumental: Bool
     public let plainLyrics: String?
     public let syncedLyrics: String?
+    public var source: LyricsSource? = nil
 
     public var hasLyrics: Bool {
         plainLyrics?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ||
@@ -69,7 +75,7 @@ public struct LyricsRecord: Decodable, Identifiable, Sendable {
     }
 }
 
-public enum LyricsLookup: Sendable {
+public enum LyricsLookup: Codable, Sendable {
     case record(LyricsRecord), candidates([LyricsRecord]), instrumental, missing
 
     public static func resolve(_ matches: [LyricsRecord], for track: Track) -> LyricsLookup {

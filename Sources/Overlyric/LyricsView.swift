@@ -8,6 +8,7 @@ struct LyricsView: View {
     @State private var scrubbing = false
     @State private var scrubPosition = 0.0
     @State private var browsing = false
+    @State private var followRequest = 0
     @State private var panelSize = CGSize(width: 390, height: 510)
     @State private var timingToastVisible = false
     @State private var timingToastHideTask: Task<Void, Never>?
@@ -152,6 +153,19 @@ struct LyricsView: View {
                     .allowsHitTesting(scrollbarVisible)
                     .accessibilityHidden(!scrollbarVisible)
                     .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: scrollbarVisible)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if browsing && !timingToastVisible && !player.lines.isEmpty && !showingRecordingPicker && !player.loading && player.connectionError == nil {
+                    Button {
+                        browsing = false
+                        followRequest += 1
+                    } label: {
+                        Label("Follow lyrics", systemImage: "location.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .buttonStyle(FollowLyricsButtonStyle(tint: accent))
+                    .padding(.bottom, controlsVisible ? 100 : 12)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -435,11 +449,11 @@ struct LyricsView: View {
                     }
                 }
                 .onChange(of: player.track?.id) { _, _ in browsing = false }
-                .overlay(alignment: .bottom) {
-                    if browsing && !timingToastVisible {
-                        Button { browsing = false; if let index = player.activeIndex ?? player.lines.first?.id { withAnimation(lineAnimation) { proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42)) } } } label: {
-                            Label("Follow lyrics", systemImage: "location.fill").font(.system(size: 11, weight: .semibold))
-                        }.buttonStyle(FollowLyricsButtonStyle(tint: accent)).padding(.bottom, controlsVisible ? 100 : 12)
+                .onChange(of: followRequest) { _, _ in
+                    if let index = player.activeIndex ?? player.lines.first?.id {
+                        withAnimation(lineAnimation) {
+                            proxy.scrollTo(index, anchor: UnitPoint(x: 0.5, y: 0.42))
+                        }
                     }
                 }
             }

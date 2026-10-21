@@ -24,7 +24,7 @@ struct LyricsSearchView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Find the words").font(.system(size: 21, weight: .semibold, design: .rounded))
-                    Text("Search LRCLIB for another recording.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Search LRCLIB, then NetEase if needed.").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Done") { dismiss() }.buttonStyle(FlatButtonStyle()).keyboardShortcut(.cancelAction)
@@ -43,7 +43,7 @@ struct LyricsSearchView: View {
             Text("Choose a recording to use for this song. Other versions may have different timing.")
                 .font(.caption).foregroundStyle(.secondary)
             if loading {
-                ProgressView("Searching LRCLIB…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView("Searching lyrics…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if results.isEmpty {
                 VStack(spacing: 12) {
                     Text(failed ? "The lyrics library is unavailable right now." : "No matching recordings yet.")
@@ -65,7 +65,7 @@ struct LyricsSearchView: View {
                                         Text(record.trackName).font(.system(size: 13, weight: .semibold))
                                         Text("\(record.artistName) · \(record.albumName)")
                                             .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                                        Text(record.instrumental && !record.hasLyrics ? "Instrumental" : "Lyrics available")
+                                        Text(record.source == .netease ? "NetEase · Select to load lyrics" : "LRCLIB")
                                             .font(.caption2).foregroundStyle(player.accent)
                                     }
                                     Spacer()
@@ -79,7 +79,7 @@ struct LyricsSearchView: View {
                     }
                 }.scrollIndicators(.never)
             }
-            Text("Results from LRCLIB").font(.caption2).foregroundStyle(.tertiary)
+            Text("LRCLIB · NetEase fallback").font(.caption2).foregroundStyle(.tertiary)
         }
         .padding(24).frame(width: 480, height: 490)
         .preferredColorScheme(.dark)
