@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-20 -20 475 370">
+  <defs>
+    <path id="q" d="M42 108C62 50 132 20 177 2C186-1 202 3 199 16C197 23 192 27 186 30C142 55 104 95 97 142C162 135 203 175 203 233C203 290 157 328 102 328C44 328 0 285 0 220C0 155 37 113 80 105Z"/>
+  </defs>
+  <use xlink:href="#q" fill="#000"/>
+  <use xlink:href="#q" x="232" fill="#000"/>
+</svg>

@@ -63,7 +63,21 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject, NS
             name: NSWorkspace.didActivateApplicationNotification, object: nil)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "quote.bubble", accessibilityDescription: "Overlyric")
+            let icon = NSImage(size: NSSize(width: 18, height: 18))
+            for suffix in ["", "@2x", "@3x"] {
+                guard let url = Bundle.main.url(forResource: "MenuBarIcon\(suffix)", withExtension: "png"),
+                      let data = try? Data(contentsOf: url),
+                      let representation = NSBitmapImageRep(data: data) else { continue }
+                representation.size = icon.size
+                icon.addRepresentation(representation)
+            }
+            if !icon.representations.isEmpty {
+                icon.isTemplate = true
+                icon.accessibilityDescription = "Overlyric"
+                button.image = icon
+            } else {
+                button.image = NSImage(systemSymbolName: "quote.bubble", accessibilityDescription: "Overlyric")
+            }
             button.target = self; button.action = #selector(statusClicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "Overlyric · click to toggle lyrics · right-click for options"
