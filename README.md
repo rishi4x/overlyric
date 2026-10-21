@@ -2,9 +2,9 @@
 
 Spotify Lyrics overlay for macOS.
 
-[![Watch the Overlyric demo](docs/preview.jpg)](https://github.com/rishi4x/overlyric/releases/download/v1.0.0/demo.mp4)
+https://github.com/user-attachments/assets/cfb6a9ef-6935-43fc-acbd-f0a9c144c81f
 
-[Watch the video](https://github.com/rishi4x/overlyric/releases/download/v1.0.0/demo.mp4) · [Download](https://github.com/rishi4x/overlyric/releases/latest)
+[Download](https://github.com/rishi4x/overlyric/releases/latest)
 
 ## Install
 
